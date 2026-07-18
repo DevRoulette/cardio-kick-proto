@@ -36,6 +36,7 @@
   #skel{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)}
   .overlay{position:fixed;inset:0;background:rgba(11,14,26,.93);z-index:10;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;overflow-y:auto}
+  #calOv{justify-content:flex-start;padding-top:30px;gap:12px}
   #startOv{justify-content:flex-start;overflow-y:auto;padding-top:5vh;padding-bottom:44px}
   .overlay h1{font-family:'Bungee',cursive;font-size:clamp(30px,7vw,56px);line-height:1.05}
   .overlay h1 .c{color:var(--cyan)}.overlay h1 .m{color:var(--magenta)}
@@ -162,8 +163,9 @@ const $=id=>document.getElementById(id);
 const GAME='CARDIOKEEPER',LBTABLE='cardio_scores_keeper',LOBBY='cardio-keeper-lobby',ROOMP='cardio-keeper-';
 const cnv=$('pitch'),ctx=cnv.getContext('2d');
 let W=innerWidth,H=innerHeight;
-function resize(){W=innerWidth;H=innerHeight;cnv.width=W*devicePixelRatio;cnv.height=H*devicePixelRatio;
-  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}
+const DPR=Math.min(devicePixelRatio||1,2);
+function resize(){W=innerWidth;H=innerHeight;cnv.width=W*DPR;cnv.height=H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0)}
 addEventListener('resize',resize);resize();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -589,6 +591,9 @@ function drawFilter(c,vx,vy,dw,dh){
 }
 function drawRec(){
   if(!rec.active)return;
+  const _n=performance.now();
+  if(rec._last&&_n-rec._last<31){rec.raf=requestAnimationFrame(drawRec);return}
+  rec._last=_n;
   const c=rec.ctx,RW=720,RH=1280,g=cnv;
   c.fillStyle='#0b0e1a';c.fillRect(0,0,RW,RH);
   if(rec.layout==='split'){
