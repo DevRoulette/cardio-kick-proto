@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>CardioKick — prototype</title>
+<title>CardioKeeper — prototype</title>
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{--ink:#0b0e1a;--tunnel:#141a30;--cyan:#3ee8ff;--magenta:#ff3ea5;--lime:#c8ff3e;--paper:#f2f4ff}
@@ -11,8 +11,10 @@
   html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--paper);font-family:'Space Grotesk',sans-serif}
   #pitch{position:fixed;inset:0;width:100%;height:100%;display:block}
   .hud{position:fixed;top:14px;left:16px;right:16px;display:flex;justify-content:space-between;z-index:5;pointer-events:none}
-  .score{font-family:'Bungee',cursive;font-size:26px;color:var(--lime)}
-  .kicks{font-family:'Bungee',cursive;font-size:26px;color:var(--cyan)}
+  .score{font-family:'Bungee',cursive;font-size:28px;color:var(--lime)}
+  .lives{font-size:24px;letter-spacing:4px}
+  #streak{position:fixed;top:60px;left:50%;transform:translateX(-50%);font-family:'Bungee',cursive;
+    font-size:20px;color:var(--cyan);z-index:5;pointer-events:none;text-shadow:0 0 14px rgba(62,232,255,.7)}
   #camwrap{position:fixed;right:14px;bottom:14px;width:150px;max-width:40vw;border-radius:14px;overflow:hidden;
     border:2px solid var(--cyan);box-shadow:0 0 24px rgba(62,232,255,.35);z-index:5}
   #camwrap.big{right:50%;transform:translateX(50%);bottom:16%;width:min(380px,72vw);max-width:72vw;z-index:11}
@@ -31,32 +33,35 @@
   button:active{transform:translateY(4px);box-shadow:0 2px 0 #7da317}
   .status{font-size:15px;color:var(--cyan);min-height:22px}
   .hidden{display:none !important}
-  #banner{position:fixed;top:34%;left:50%;transform:translate(-50%,-50%);font-family:'Bungee',cursive;
-    font-size:clamp(28px,8vw,60px);color:var(--magenta);text-shadow:0 0 30px rgba(255,62,165,.8);
+  #banner{position:fixed;top:26%;left:50%;transform:translate(-50%,-50%);font-family:'Bungee',cursive;
+    font-size:clamp(28px,8vw,58px);color:var(--magenta);text-shadow:0 0 30px rgba(255,62,165,.8);
     z-index:6;opacity:0;pointer-events:none;transition:opacity .15s;white-space:nowrap}
+  #flash{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;background:radial-gradient(ellipse at center,transparent 25%,rgba(255,30,60,.55));transition:opacity .1s}
 </style>
 </head>
 <body>
 <canvas id="pitch"></canvas>
-<div class="hud"><div class="score" id="score">⚽ 0/0</div><div class="kicks" id="kicks">5 KICKS</div></div>
+<div class="hud"><div class="score" id="score">🧤 0</div><div class="lives" id="lives">❤️❤️❤️</div></div>
+<div id="streak"></div>
 <div id="banner"></div>
+<div id="flash"></div>
 <div id="camwrap" class="hidden"><video id="cam" autoplay playsinline muted></video><canvas id="skel"></canvas></div>
 
 <div class="overlay" id="startOv">
-  <h1><span class="c">CARDIO</span><span class="m">KICK</span></h1>
-  <p>Penalty shootout — your legs are the controller. Stand FAR back: the camera must see your whole body, feet included.</p>
+  <h1><span class="c">CARDIO</span><span class="m">KEEPER</span></h1>
+  <p>YOU are the goalkeeper. Shots fly at your goal — get your hands on them. Stand ~1.5 m back, chest and both hands visible.</p>
   <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
-    <div class="ctl"><b>⚽ KICK</b>Swing your leg like a real penalty. Kick toward the LEFT, CENTER or RIGHT to aim</div>
-    <div class="ctl"><b>🧤 KEEPER</b>He dives every shot. 5 kicks — beat him to the corners</div>
+    <div class="ctl"><b>🧤 SAVE</b>A target ring shows where the shot is going — get either hand there before the ball lands</div>
+    <div class="ctl"><b>🔥 STREAK</b>Chain saves for bonus points. Concede 3 goals and it’s over</div>
   </div>
-  <button id="btnStart">🔔 SHOOT OUT</button>
+  <button id="btnStart">🧤 DEFEND THE GOAL</button>
   <div class="status" id="startStatus"></div>
   <div style="font-size:13px;color:#6f7aa6">Prototype — nothing uploaded, camera stays on this device.</div>
 </div>
 
 <div class="overlay hidden" id="calOv">
-  <h1><span class="c">FULL BODY</span> <span class="m">CHECK</span></h1>
-  <p id="calStatus">Step back until I can see you head to feet…</p>
+  <h1><span class="c">HANDS</span> <span class="m">READY</span></h1>
+  <p id="calStatus">Stand centered, both hands visible…</p>
   <div style="width:280px;height:14px;border:2px solid var(--cyan);border-radius:8px;overflow:hidden">
     <div id="calFill" style="height:100%;width:0%;background:var(--lime)"></div>
   </div>
@@ -65,7 +70,7 @@
 <div class="overlay hidden" id="endOv">
   <h1 id="endTitle"></h1>
   <p id="endStats"></p>
-  <button id="btnAgain">🔔 AGAIN</button>
+  <button id="btnAgain">🧤 AGAIN</button>
 </div>
 
 <script type="module">
@@ -95,10 +100,10 @@ function noise(d,peak,hp){const c=ac(),t0=c.currentTime;
   const g=c.createGain();g.gain.setValueAtTime(peak,t0);g.gain.exponentialRampToValueAtTime(.001,t0+d);
   src.connect(f);f.connect(g);g.connect(c.destination);src.start(t0)}
 const SFX={
-  kick(){tone(120,'square',.005,.1,.3,60);noise(.06,.12,600)},
-  goal(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,'square',.01,.16,.16),i*90));noise(.5,.12,300)},
-  save(){tone(200,'sawtooth',.01,.25,.22,90)},
-  post(){tone(1200,'square',.003,.09,.2,800);tone(400,'triangle',.01,.2,.15)},
+  kick(){tone(120,'square',.005,.1,.28,60);noise(.05,.1,600)},
+  save(){tone(880,'square',.005,.1,.2);noise(.08,.15,900)},
+  bigsave(){[880,1109,1319].forEach((f,i)=>setTimeout(()=>tone(f,'square',.01,.1,.14),i*70));noise(.1,.16,800)},
+  goal(){tone(200,'sawtooth',.01,.35,.26,70);noise(.25,.12,200)},
   whistle(){tone(2200,'square',.01,.35,.15);setTimeout(()=>tone(2200,'square',.01,.2,.12),380)},
   over(){[392,330,262,196].forEach((f,i)=>setTimeout(()=>tone(f,'triangle',.02,.25,.2),i*150))}
 };
@@ -121,10 +126,10 @@ async function initCamera(){
   $('camwrap').classList.remove('hidden');
 }
 
-/* ---- feet ---- */
-const feet={
-  L:{lm:27,x:0,y:0,px:0,py:0,vx:0,vy:0,speed:0,cool:0},
-  R:{lm:28,x:0,y:0,px:0,py:0,vx:0,vy:0,speed:0,cool:0}
+/* ---- hands ---- */
+const gloves={
+  L:{lm:15,x:W*.35,y:H*.7},
+  R:{lm:16,x:W*.65,y:H*.7}
 };
 let lastPose=0;
 const cal={active:false,samples:0,done:false};
@@ -137,172 +142,210 @@ function poseLoop(){
   sctx.clearRect(0,0,skel.width,skel.height);
   if(res.landmarks&&res.landmarks[0]){
     const lm=res.landmarks[0];
-    const dt=Math.min(.1,(now-lastPose)/1000)||.033;lastPose=now;
     if(cal.active&&!cal.done){
       const vis=i=>(lm[i].visibility==null||lm[i].visibility>.5)&&lm[i].x>0&&lm[i].x<1&&lm[i].y>0&&lm[i].y<1;
-      const ok=vis(0)&&vis(11)&&vis(12)&&vis(23)&&vis(24)&&vis(27)&&vis(28);
+      const ok=vis(11)&&vis(12)&&vis(15)&&vis(16);
       if(!ok){cal.samples=0;$('camwrap').classList.remove('good');
-        $('calStatus').textContent='Step FURTHER back — head to FEET must be in the frame';
+        $('calStatus').textContent='Step back — chest and BOTH hands in frame';
         $('calFill').style.width='0%';
       }else{
         $('camwrap').classList.add('good');
         cal.samples++;
-        $('calStatus').textContent='Perfect — whole body visible, hold still…';
+        $('calStatus').textContent='Perfect — hold still…';
         $('calFill').style.width=Math.min(100,cal.samples*3.4)+'%';
         if(cal.samples>=30){
           cal.done=true;cal.active=false;
           $('calOv').classList.add('hidden');
           $('camwrap').classList.remove('big');$('camwrap').classList.remove('good');
-          startShootout();
+          startGame();
         }
       }
     }
     for(const k of ['L','R']){
-      const f=feet[k],a=lm[f.lm];
-      f.px=f.x;f.py=f.y;f.x=a.x;f.y=a.y;
-      f.vx=f.vx*.4+((f.x-f.px)/dt)*.6;
-      f.vy=f.vy*.4+((f.y-f.py)/dt)*.6;
-      f.speed=Math.hypot(f.vx,f.vy);
-      f.cool=Math.max(0,f.cool-dt);
-      // a kick: fast foot swing, mostly upward/forward
-      if(G.phase==='ready'&&f.cool<=0&&f.speed>1.7&&f.vy<-.4){
-        f.cool=1.2;doKick(f);
-      }
+      const g=gloves[k],w=lm[g.lm];
+      // hands mapped generously across the whole goal — small real moves = big reach
+      g.x=(1-w.x)*W;
+      g.y=Math.max(H*.1,Math.min(H*.95,(w.y-.15)*1.35*H));
       sctx.fillStyle=k==='L'?'#3ee8ff':'#c8ff3e';
-      sctx.beginPath();sctx.arc(a.x*skel.width,a.y*skel.height,6,0,7);sctx.fill();
+      sctx.beginPath();sctx.arc(w.x*skel.width,w.y*skel.height,6,0,7);sctx.fill();
     }
   }
   requestAnimationFrame(poseLoop);
 }
 
 /* ---- game ---- */
-const G={phase:'idle',kick:0,goals:0,total:5,t:0,
-  ball:{x:0,y:0,s:1,tx:0,ty:0},keeper:{x:0,dive:0,zone:1,anim:0},
-  result:'',parts:[],lvl:0};
-const ZX=z=>W/2+(z-1)*W*.21; // zone 0,1,2 → left,center,right in the goal
-function startShootout(){
-  G.phase='ready';G.kick=0;G.goals=0;G.t=0;G.lvl=0;
-  resetBall();
-  hud();
+const G={running:false,saves:0,streak:0,best:0,conceded:0,phase:'idle',t:0,
+  shot:null,parts:[],rings:[],pops:[],shake:0,freeze:0,shooterX:W/2,celebr:0};
+const ZONES=()=>[
+  {x:W*.2,y:H*.32},{x:W*.5,y:H*.28},{x:W*.8,y:H*.32},
+  {x:W*.2,y:H*.62},{x:W*.5,y:H*.66},{x:W*.8,y:H*.62}
+];
+function startGame(){
+  Object.assign(G,{running:true,saves:0,streak:0,best:0,conceded:0,phase:'wait',t:.9,
+    shot:null,parts:[],rings:[],pops:[],shake:0,celebr:0});
+  $('score').textContent='🧤 0';$('lives').textContent='❤️❤️❤️';$('streak').textContent='';
   $('startOv').classList.add('hidden');$('endOv').classList.add('hidden');
-  banner('KICK WHEN READY! ⚽','#c8ff3e');SFX.whistle();
+  banner('DEFEND! 🧤','#c8ff3e');SFX.whistle();
 }
-function hud(){
-  $('score').textContent='⚽ '+G.goals+'/'+G.kick;
-  $('kicks').textContent=(G.total-G.kick)+' KICKS';
-}
-function resetBall(){
-  G.ball={x:W/2,y:H*.78,s:1,tx:W/2,ty:H*.30};
-  G.keeper.dive=0;G.keeper.anim=0;G.keeper.x=W/2;
-}
-function doKick(foot){
-  if(G.phase!=='ready')return;
-  // aim: horizontal swing direction (mirrored). big |vx| → corner, small → center
-  const vx=-foot.vx; // mirror
-  const zone=vx<-.9?0:vx>.9?2:1;
-  const power=Math.min(1,foot.speed/4);
-  G.phase='flight';G.t=0;
-  G.shotZone=zone;G.shotPower=power;
-  G.keeper.zone=Math.random()<.34?0:Math.random()<.5?1:2; // keeper picks a zone
-  G.ball.tx=ZX(zone);G.ball.ty=H*.30;
-  SFX.kick();
-  if(navigator.vibrate)navigator.vibrate(50);
+function newShot(){
+  const z=ZONES()[Math.floor(Math.random()*6)];
+  const speedUp=Math.min(.45,G.saves*.018);
+  G.shot={tx:z.x,ty:z.y,flight:.95-speedUp,wind:.75-speedUp*.5,t:0,phase:'wind',
+    sx:W/2+(Math.random()-.5)*W*.2,sy:H*.16};
+  G.shooterX=G.shot.sx;
 }
 function resolveShot(){
-  const saved=G.keeper.zone===G.shotZone&&G.shotPower<.92;
-  G.kick++;
-  if(saved){G.result='SAVED! 🧤';SFX.save();banner('SAVED! 🧤','#ff3ea5')}
-  else{
-    G.goals++;G.result='GOAL! 🎉';SFX.goal();banner('GOOOAL! 🎉','#c8ff3e');
-    for(let i=0;i<24;i++){
-      const a=Math.random()*Math.PI*2,v=150+Math.random()*300;
-      G.parts.push({x:G.ball.tx,y:G.ball.ty,vx:Math.cos(a)*v,vy:Math.sin(a)*v-100,
-        t:0,life:.6+Math.random()*.4,col:['#c8ff3e','#3ee8ff','#ff3ea5','#ffb03e'][i%4]});
+  const s=G.shot;
+  const d=Math.min(
+    Math.hypot(gloves.L.x-s.tx,gloves.L.y-s.ty),
+    Math.hypot(gloves.R.x-s.tx,gloves.R.y-s.ty));
+  const u=Math.min(W,H);
+  if(d<u*.16){ // SAVE
+    G.saves++;G.streak++;G.best=Math.max(G.best,G.streak);
+    const pts=G.streak>=3;
+    $('score').textContent='🧤 '+G.saves;
+    $('streak').textContent=G.streak>=2?'🔥 '+G.streak+' IN A ROW':'';
+    G.freeze=.09;G.shake=Math.max(G.shake,.8);
+    G.rings.push({x:s.tx,y:s.ty,t:0,life:.3,col:'#c8ff3e'});
+    for(let i=0;i<16;i++){const a=Math.random()*Math.PI*2,v=150+Math.random()*280;
+      G.parts.push({x:s.tx,y:s.ty,vx:Math.cos(a)*v,vy:Math.sin(a)*v-90,t:0,life:.5,col:'#c8ff3e',r:3+Math.random()*4})}
+    G.pops.push({x:s.tx,y:s.ty-u*.06,txt:G.streak>=3?'SAVE! ×'+G.streak:'SAVE!',col:'#c8ff3e',t:0,life:.8,big:true});
+    pts?SFX.bigsave():SFX.save();
+    if(navigator.vibrate)navigator.vibrate(50);
+    // ball deflects away
+    G.shot.phase='deflect';G.shot.t=0;
+    G.shot.dvx=(Math.random()-.5)*W*1.2;G.shot.dvy=-H*(.5+Math.random()*.4);
+  }else{ // GOAL conceded
+    G.conceded++;G.streak=0;$('streak').textContent='';
+    $('lives').textContent='❤️'.repeat(Math.max(0,3-G.conceded))+'🖤'.repeat(G.conceded);
+    G.shake=Math.max(G.shake,1);G.celebr=1;
+    $('flash').style.opacity=1;setTimeout(()=>$('flash').style.opacity=0,200);
+    G.pops.push({x:s.tx,y:s.ty,txt:'GOAL 😖',col:'#ff3ea5',t:0,life:.9,big:true});
+    SFX.goal();
+    if(navigator.vibrate)navigator.vibrate(160);
+    G.shot.phase='in';G.shot.t=0;
+    if(G.conceded>=3){
+      G.running=false;SFX.over();
+      $('endTitle').innerHTML=G.saves>=15?'<span style="color:var(--lime)">WALL</span> 🧱'
+        :G.saves>=8?'<span class="c">SOLID</span> 🧤':'<span class="m">FULL</span> TIME';
+      $('endStats').innerHTML='Saves <b style="color:var(--lime)">'+G.saves
+        +'</b> · Best streak <b style="color:var(--cyan)">'+G.best+'</b>';
+      setTimeout(()=>$('endOv').classList.remove('hidden'),700);
+      return;
     }
   }
-  hud();
-  G.phase='result';G.t=0;
-}
-function endShootout(){
-  G.phase='over';SFX.over();
-  const g=G.goals;
-  $('endTitle').innerHTML=g>=4?'<span style="color:var(--lime)">LEGEND</span> 🏆'
-    :g>=3?'<span class="c">SOLID</span> ⚽':'<span class="m">ROUGH</span> DAY';
-  $('endStats').innerHTML='You scored <b style="color:var(--lime)">'+g+'/'+G.total+'</b>';
-  setTimeout(()=>$('endOv').classList.remove('hidden'),600);
+  G.phase='wait';G.t=.75;
 }
 
 /* ---- draw ---- */
 function drawScene(dt){
   const u=Math.min(W,H);
-  // pitch
-  const gy=H*.34; // goal line
+  // goal frame around YOU (the viewer): posts at screen edges
+  ctx.strokeStyle='rgba(242,244,255,.5)';ctx.lineWidth=10;
+  ctx.beginPath();ctx.moveTo(W*.06,H*.92);ctx.lineTo(W*.06,H*.12);
+  ctx.lineTo(W*.94,H*.12);ctx.lineTo(W*.94,H*.92);ctx.stroke();
+  ctx.strokeStyle='rgba(242,244,255,.12)';ctx.lineWidth=1.5;
+  for(let i=1;i<10;i++){const x=W*.06+(W*.88)*i/10;
+    ctx.beginPath();ctx.moveTo(x,H*.12);ctx.lineTo(x,H*.92);ctx.stroke()}
+  for(let i=1;i<7;i++){const y=H*.12+(H*.8)*i/7;
+    ctx.beginPath();ctx.moveTo(W*.06,y);ctx.lineTo(W*.94,y);ctx.stroke()}
+  // pitch horizon
   ctx.fillStyle='#10331e';
-  ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=3;
-  for(let i=0;i<5;i++){const y=gy+(H-gy)*(i/5+.1);
-    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
-  // goal
-  const gw=W*.62,gx=W/2-gw/2,gh=H*.17;
-  ctx.strokeStyle='#f2f4ff';ctx.lineWidth=7;
-  ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx,gy-gh);ctx.lineTo(gx+gw,gy-gh);ctx.lineTo(gx+gw,gy);ctx.stroke();
-  // net
-  ctx.strokeStyle='rgba(242,244,255,.22)';ctx.lineWidth=1.5;
-  for(let i=1;i<9;i++){const x=gx+gw*i/9;
-    ctx.beginPath();ctx.moveTo(x,gy-gh);ctx.lineTo(x,gy);ctx.stroke()}
-  for(let i=1;i<5;i++){const y=gy-gh*i/5;
-    ctx.beginPath();ctx.moveTo(gx,y);ctx.lineTo(gx+gw,y);ctx.stroke()}
-  // keeper
-  const k=G.keeper;
-  if(G.phase==='flight'||G.phase==='result'){
-    k.anim=Math.min(1,k.anim+dt*3.2);
-    k.x+= (ZX(k.zone)-k.x)*Math.min(1,dt*7);
-  }
-  const kx=k.x,ky=gy-u*.055,tilt=(G.phase==='flight'||G.phase==='result')?(k.zone-1)*k.anim*.85:Math.sin(performance.now()/400)*.06;
-  ctx.save();ctx.translate(kx,ky);ctx.rotate(tilt);
+  ctx.fillRect(0,H*.08,W,H*.06);
+  // shooter (far away, small)
+  G.celebr=Math.max(0,G.celebr-dt*1.2);
+  const shx=G.shooterX,shy=H*.105;
+  ctx.save();ctx.translate(shx,shy);
+  const kickK=(G.shot&&G.shot.phase==='wind')?1-(G.shot.t/G.shot.wind):0;
   ctx.fillStyle='#1d2445';
-  ctx.beginPath();ctx.ellipse(0,0,u*.045,u*.062,0,0,7);ctx.fill();
-  ctx.strokeStyle='#ffb03e';ctx.lineWidth=3;ctx.stroke();
+  ctx.beginPath();ctx.ellipse(0,0,u*.022,u*.03,0,0,7);ctx.fill();
+  ctx.strokeStyle='#ff3ea5';ctx.lineWidth=2;ctx.stroke();
   ctx.fillStyle='#e8b98c';
-  ctx.beginPath();ctx.arc(0,-u*.075,u*.032,0,7);ctx.fill();
-  ctx.strokeStyle='#ffb03e';ctx.stroke();
-  ctx.fillStyle='#ffb03e'; // gloves out when diving
-  const gl=(G.phase==='flight'||G.phase==='result')?k.anim:0;
-  ctx.beginPath();ctx.arc(-u*.05-gl*u*.03,-u*.02-gl*u*.04,u*.02,0,7);ctx.fill();
-  ctx.beginPath();ctx.arc(u*.05+gl*u*.03,-u*.02-gl*u*.04,u*.02,0,7);ctx.fill();
+  ctx.beginPath();ctx.arc(0,-u*.038,u*.015,0,7);ctx.fill();
+  if(G.celebr>0){ // arms up after scoring
+    ctx.strokeStyle='#ff3ea5';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(-u*.018,-u*.02);ctx.lineTo(-u*.034,-u*.05);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(u*.018,-u*.02);ctx.lineTo(u*.034,-u*.05);ctx.stroke();
+  }
+  if(kickK>0){ // leg wind
+    ctx.strokeStyle='#ff3ea5';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(0,u*.025);ctx.lineTo(u*.03*Math.sin(kickK*3),u*.05);ctx.stroke();
+  }
   ctx.restore();
-  // ball
-  const b=G.ball;
-  if(G.phase==='flight'){
-    G.t+=dt;const k2=Math.min(1,G.t/.55);
-    b.x=W/2+(b.tx-W/2)*k2;
-    b.y=H*.78+(b.ty-H*.78)*k2-Math.sin(k2*Math.PI)*H*.09;
-    b.s=1-.62*k2;
-    if(k2>=1)resolveShot();
-  }else if(G.phase==='result'){
-    G.t+=dt;
-    if(G.t>1.4){
-      if(G.kick>=G.total)endShootout();
-      else{G.phase='ready';resetBall();banner('NEXT KICK ⚽','#3ee8ff')}
+  // shot lifecycle
+  if(G.running){
+    if(G.phase==='wait'){G.t-=dt;if(G.t<=0){newShot();G.phase='shot'}}
+    else if(G.phase==='shot'&&G.shot){
+      const s=G.shot;s.t+=dt;
+      if(s.phase==='wind'){
+        // telegraph: pulsing target ring where it will arrive
+        const p=.5+Math.sin(performance.now()/110)*.5;
+        ctx.globalAlpha=.35+p*.35;
+        ctx.strokeStyle='#ffb03e';ctx.lineWidth=5;ctx.setLineDash([12,9]);
+        ctx.beginPath();ctx.arc(s.tx,s.ty,u*.11,0,7);ctx.stroke();
+        ctx.setLineDash([]);ctx.globalAlpha=1;
+        if(s.t>=s.wind){s.phase='fly';s.t=0;SFX.kick()}
+      }else if(s.phase==='fly'){
+        const k=Math.min(1,s.t/s.flight);
+        s.x=s.sx+(s.tx-s.sx)*k;
+        s.y=s.sy+(s.ty-s.sy)*k-Math.sin(k*Math.PI)*H*.05;
+        s.s=.3+k*1.1;
+        // faint ring stays visible while flying
+        ctx.globalAlpha=.3;
+        ctx.strokeStyle='#ffb03e';ctx.lineWidth=3;
+        ctx.beginPath();ctx.arc(s.tx,s.ty,u*.11,0,7);ctx.stroke();
+        ctx.globalAlpha=1;
+        ctx.font=(u*.09*s.s)+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('⚽',s.x,s.y);
+        if(k>=1)resolveShot();
+      }else if(s.phase==='deflect'){
+        s.t+=0; s.x+=s.dvx*dt;s.y+=s.dvy*dt;s.dvy+=H*1.4*dt;
+        ctx.font=(u*.09*1.3)+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('⚽',s.x,s.y);
+        if(s.y>H+80)G.shot=null;
+      }else if(s.phase==='in'){
+        s.t+=dt;
+        ctx.globalAlpha=Math.max(0,1-s.t*2);
+        ctx.font=(u*.13)+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('⚽',s.tx,s.ty);
+        ctx.globalAlpha=1;
+        if(s.t>.6)G.shot=null;
+      }
     }
   }
-  ctx.font=(u*.11*b.s)+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('⚽',b.x,b.y);
-  // aim hint
-  if(G.phase==='ready'){
-    const p=.5+Math.sin(performance.now()/200)*.5;
-    ctx.globalAlpha=.25+p*.2;
-    ctx.font='bold '+Math.round(u*.026)+'px Bungee, sans-serif';
-    ctx.fillStyle='#c8ff3e';
-    ctx.fillText('SWING YOUR LEG — AIM LEFT / CENTER / RIGHT',W/2,H*.62);
-    ctx.globalAlpha=1;
+  // your gloves — big, tracking your hands
+  for(const k of ['L','R']){
+    const g=gloves[k],col=k==='L'?'#3ee8ff':'#c8ff3e';
+    ctx.fillStyle=col;
+    ctx.beginPath();ctx.arc(g.x,g.y,u*.075,0,7);ctx.fill();
+    ctx.fillStyle='rgba(11,14,26,.3)';
+    ctx.beginPath();ctx.arc(g.x-u*.018,g.y+u*.015,u*.045,0,7);ctx.fill();
+    ctx.strokeStyle='rgba(11,14,26,.6)';ctx.lineWidth=4;
+    ctx.beginPath();ctx.arc(g.x,g.y,u*.075,0,7);ctx.stroke();
   }
-  // confetti
-  for(const p of G.parts){p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=600*dt}
+  // fx
+  for(const r of G.rings){r.t+=dt}
+  G.rings=G.rings.filter(r=>r.t<r.life);
+  for(const r of G.rings){
+    const k=r.t/r.life;
+    ctx.globalAlpha=1-k;ctx.strokeStyle=r.col;ctx.lineWidth=8*(1-k)+2;
+    ctx.beginPath();ctx.arc(r.x,r.y,u*.05+k*u*.2,0,7);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  for(const p of G.parts){p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=700*dt}
   G.parts=G.parts.filter(p=>p.t<p.life);
   for(const p of G.parts){
     ctx.globalAlpha=1-p.t/p.life;ctx.fillStyle=p.col;
-    ctx.fillRect(p.x-3,p.y-3,6,6);
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  for(const p of G.pops){p.t+=dt;p.y-=42*dt}
+  G.pops=G.pops.filter(p=>p.t<p.life);
+  for(const p of G.pops){
+    ctx.globalAlpha=Math.min(1,2-2*p.t/p.life);
+    ctx.font='bold '+(p.big?44:28)+'px Bungee, sans-serif';ctx.textAlign='center';
+    ctx.fillStyle=p.col;ctx.strokeStyle='rgba(11,14,26,.85)';ctx.lineWidth=6;
+    ctx.strokeText(p.txt,p.x,p.y);ctx.fillText(p.txt,p.x,p.y);
   }
   ctx.globalAlpha=1;
 }
@@ -310,12 +353,18 @@ function drawScene(dt){
 /* ---- loop ---- */
 let lastF=0,alive=false,banT=null;
 function banner(t,col){const b=$('banner');b.textContent=t;b.style.color=col;b.style.opacity=1;
-  clearTimeout(banT);banT=setTimeout(()=>b.style.opacity=0,1100)}
+  clearTimeout(banT);banT=setTimeout(()=>b.style.opacity=0,900)}
 function loop(now){
   if(!alive)return;
-  const dt=Math.min(.05,(now-lastF)/1000)||.016;lastF=now;
+  let dt=Math.min(.05,(now-lastF)/1000)||.016;lastF=now;
+  const rdt=dt;
+  if(G.freeze>0){G.freeze-=rdt;dt=0}
   ctx.clearRect(0,0,W,H);
+  ctx.save();
+  if(G.shake>0){G.shake=Math.max(0,G.shake-rdt*3);
+    ctx.translate((Math.random()-.5)*G.shake*22,(Math.random()-.5)*G.shake*22)}
   drawScene(dt);
+  ctx.restore();
   requestAnimationFrame(loop);
 }
 
@@ -332,9 +381,9 @@ $('btnStart').onclick=async()=>{
     $('startStatus').textContent='Camera failed ('+e.message+'). Use Safari/Chrome, allow camera.';
   }
 };
-$('btnAgain').onclick=()=>startShootout();
+$('btnAgain').onclick=()=>startGame();
 alive=true;requestAnimationFrame(loop);
-if(location.search.includes('demo')){$('startOv').classList.add('hidden');startShootout()}
+if(location.search.includes('demo')){$('startOv').classList.add('hidden');startGame()}
 </script>
 </body>
 </html>
