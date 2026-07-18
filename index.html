@@ -68,6 +68,10 @@
   #filterRow button{font-size:20px;padding:6px 10px;background:var(--tunnel);border:1px solid #2a3357;
     border-radius:10px;box-shadow:none;color:#fff}
   #filterRow button.sel{border-color:var(--lime)}
+  .gnav{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .gnav a{font-family:'Bungee',cursive;font-size:13px;color:var(--paper);text-decoration:none;
+    background:var(--tunnel);border:1px solid #2a3357;border-radius:11px;padding:10px 14px}
+  .gnav a:active{border-color:var(--lime)}
   .lbtitle{font-family:'Bungee',cursive;color:var(--magenta);font-size:17px}
   #homeLb{list-style:none;background:var(--tunnel);border:1px solid #2a3357;border-radius:14px;
     padding:12px 20px;min-width:270px;max-width:330px;text-align:left}
@@ -113,6 +117,8 @@
   <div style="display:flex;align-items:center;gap:10px"><div id="bootSpin" class="hidden"></div>
     <div class="status" id="startStatus"></div></div>
   <div style="font-size:13px;color:#6f7aa6">Solo: camera stays on device. Multiplayer: you choose what to share.</div>
+  <div class="lbtitle" style="margin-top:10px">🎮 MORE GAMES</div>
+  <div class="gnav"><a href="https://cardio.surf/">🏃 SURFER</a><a href="https://cardio.surf/boxing/">🥊 BOXING</a><a href="https://cardio.surf/ninja/">🥷 NINJA</a></div>
   <div class="lbtitle" style="margin-top:14px">🌍 WORLD TOP 20</div>
   <ol id="homeLb"><li>…</li></ol>
 </div>
