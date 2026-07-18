@@ -284,10 +284,14 @@ function poseLoop(){
     pose.face={x:lm[0].x,y:lm[0].y,w:Math.max(.06,Math.abs(lm[7].x-lm[8].x))};
     if(cal.active&&!cal.done){
       const vis=i=>(lm[i].visibility==null||lm[i].visibility>.5)&&lm[i].x>0&&lm[i].x<1&&lm[i].y>0&&lm[i].y<1;
-      const ok=vis(11)&&vis(12)&&vis(15)&&vis(16);
+      const shOk=vis(11)&&vis(12),handL=vis(15),handR=vis(16);
+      const ok=shOk&&handL&&handR;
       if(ok)cal.seen=true;
       if(!ok){cal.samples=0;$('camwrap').classList.remove('good');
-        $('calStatus').textContent='Step back — chest and BOTH hands in frame';
+        $('calStatus').textContent=
+          !shOk?'Step back — I need to see your chest'
+          :(handL!==handR)?'👐 Show BOTH hands — match the outline!'
+          :'👐 Hands up — I can\u2019t see them';
         $('calFill').style.width='0%';
       }else{
         $('camwrap').classList.add('good');
