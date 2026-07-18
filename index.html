@@ -163,9 +163,11 @@ const $=id=>document.getElementById(id);
 const GAME='CARDIOKEEPER',LBTABLE='cardio_scores_keeper',LOBBY='cardio-keeper-lobby',ROOMP='cardio-keeper-';
 const cnv=$('pitch'),ctx=cnv.getContext('2d');
 let W=innerWidth,H=innerHeight;
-const DPR=Math.min(devicePixelRatio||1,2);
-function resize(){W=innerWidth;H=innerHeight;cnv.width=W*DPR;cnv.height=H*DPR;
-  ctx.setTransform(DPR,0,0,DPR,0,0)}
+let DPRCAP=2;
+function DPR(){return Math.min(devicePixelRatio||1,DPRCAP)}
+function resize(){const d=DPR();W=innerWidth;H=innerHeight;cnv.width=W*d;cnv.height=H*d;
+  ctx.setTransform(d,0,0,d,0,0)}
+function setDprCap(v){DPRCAP=v;resize()}
 addEventListener('resize',resize);resize();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -565,19 +567,20 @@ $('filterRow').onclick=e=>{
   const cb=filterCb;filterCb=null;if(cb)cb();
 };
 function startRec(){
-  rec.cnv=document.createElement('canvas');rec.cnv.width=720;rec.cnv.height=1280;
-  rec.ctx=rec.cnv.getContext('2d');
+  rec.cnv=document.createElement('canvas');rec.cnv.width=540;rec.cnv.height=960;
+  rec.ctx=rec.cnv.getContext('2d');rec.ctx.setTransform(.75,0,0,.75,0,0);
+  setDprCap(1.25); // lighten the game render while encoding
   rec.lastClip=null;rec.endCard=null;$('shareBar').classList.add('hidden');
   const c=ac();
   rec.dest=c.createMediaStreamDestination();
   master.connect(rec.dest);
   if(micTrack){rec.micSrc=c.createMediaStreamSource(new MediaStream([micTrack]));rec.micSrc.connect(rec.dest)}
   const stream=new MediaStream([
-    ...rec.cnv.captureStream(30).getVideoTracks(),
+    ...rec.cnv.captureStream(24).getVideoTracks(),
     ...rec.dest.stream.getAudioTracks()]);
   rec.mime=MediaRecorder.isTypeSupported('video/mp4')?'video/mp4'
     :MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')?'video/webm;codecs=vp9,opus':'video/webm';
-  rec.mr=new MediaRecorder(stream,{mimeType:rec.mime,videoBitsPerSecond:6000000});
+  rec.mr=new MediaRecorder(stream,{mimeType:rec.mime,videoBitsPerSecond:3500000});
   rec.chunks=[];
   rec.mr.ondataavailable=e=>{if(e.data.size)rec.chunks.push(e.data)};
   rec.mr.onstop=saveClip;
@@ -596,7 +599,7 @@ function drawFilter(c,vx,vy,dw,dh){
 function drawRec(){
   if(!rec.active)return;
   const _n=performance.now();
-  if(rec._last&&_n-rec._last<31){rec.raf=requestAnimationFrame(drawRec);return}
+  if(rec._last&&_n-rec._last<41){rec.raf=requestAnimationFrame(drawRec);return}
   rec._last=_n;
   const c=rec.ctx,RW=720,RH=1280,g=cnv;
   c.fillStyle='#0b0e1a';c.fillRect(0,0,RW,RH);
@@ -652,6 +655,7 @@ function drawRec(){
 }
 function stopRec(){
   if(!rec.active)return;rec.active=false;cancelAnimationFrame(rec.raf);rec.mr.stop();
+  setDprCap(2);
   try{master.disconnect(rec.dest)}catch(e){}
   try{rec.micSrc&&rec.micSrc.disconnect()}catch(e){}
   $('filterRow').classList.add('hidden');
