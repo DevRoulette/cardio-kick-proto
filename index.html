@@ -70,6 +70,10 @@
   #filterRow button{font-size:20px;padding:6px 10px;background:var(--tunnel);border:1px solid #2a3357;
     border-radius:10px;box-shadow:none;color:#fff}
   #filterRow button.sel{border-color:var(--lime)}
+    #langRow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+  #langRow button{font-family:'Bungee',cursive;font-size:12px;padding:7px 11px;border:1px solid #2a3357;
+    border-radius:9px;background:var(--tunnel);color:var(--paper);cursor:pointer;box-shadow:none}
+  #langRow button.on{border-color:var(--lime);color:var(--lime)}
   .gnav{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
   .gnav a{font-family:'Bungee',cursive;font-size:13px;color:var(--paper);text-decoration:none;
     background:var(--tunnel);border:1px solid #2a3357;border-radius:11px;padding:10px 14px}
@@ -103,31 +107,35 @@
 <div id="banner"></div>
 <div id="flash"></div>
 <div id="camwrap" class="hidden"><video id="cam" autoplay playsinline muted></video><canvas id="skel"></canvas></div>
-<button id="shareBar" class="hidden">🎬 CLIP READY — SAVE / SHARE</button>
+<button id="shareBar" class="hidden" data-i="shareClip"></button>
 <div id="filterRow" class="hidden"></div>
 
 <div class="overlay" id="startOv">
-  <h1><span class="c">CARDIO</span><span class="m">KEEPER</span></h1>
-  <p>YOU are the goalkeeper. Shots fly at your goal — get your hands on them. Stand ~1.5 m back, chest and both hands visible.</p>
+  <div id="langRow">
+    <button data-l="en">🇬🇧 EN</button><button data-l="fr">🇫🇷 FR</button>
+    <button data-l="ar">🇸🇦 AR</button><button data-l="es">🇪🇸 ES</button>
+  </div>
+  <div class="lbtitle" style="margin-top:2px" data-i="moreGames"></div>
+  <div class="gnav"><a href="https://cardio.surf/">🏃 SURFER</a><a href="https://cardio.surf/boxing/">🥊 BOXING</a><a href="https://cardio.surf/ninja/">🥷 NINJA</a></div>
+    <h1><span class="c">CARDIO</span><span class="m">KEEPER</span></h1>
+  <p data-i="intro"></p>
   <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
     <div class="ctl"><b>🧤 SAVE</b>A ring shows where the shot lands — get either hand there in time</div>
     <div class="ctl"><b>🔥 STREAK</b>Chain saves for glory. Concede 3 = full time</div>
   </div>
-  <input id="playerName" placeholder="YOUR NAME" maxlength="12" autocomplete="off">
-  <button id="btnStart">🧤 SOLO — DEFEND THE GOAL</button>
-  <button id="btnVs" class="alt">⚔️ MULTIPLAYER — SAME SHOTS, MOST SAVES WINS</button>
+  <input id="playerName" maxlength="12" autocomplete="off">
+  <button id="btnStart" data-i="solo"></button>
+  <button id="btnVs" class="alt" data-i="mp"></button>
   <div style="display:flex;align-items:center;gap:10px"><div id="bootSpin" class="hidden"></div>
     <div class="status" id="startStatus"></div></div>
-  <div style="font-size:13px;color:#6f7aa6">Solo: camera stays on device. Multiplayer: you choose what to share.</div>
-  <div class="lbtitle" style="margin-top:10px">🎮 MORE GAMES</div>
-  <div class="gnav"><a href="https://cardio.surf/">🏃 SURFER</a><a href="https://cardio.surf/boxing/">🥊 BOXING</a><a href="https://cardio.surf/ninja/">🥷 NINJA</a></div>
-  <div class="lbtitle" style="margin-top:14px">🌍 WORLD TOP 20</div>
+  <div style="font-size:13px;color:#6f7aa6" data-i="camNote"></div>
+    <div class="lbtitle" style="margin-top:14px" data-i="top20"></div>
   <ol id="homeLb"><li>…</li></ol>
 </div>
 
 <div class="overlay hidden" id="calOv">
   <h1><span class="c">HANDS</span> <span class="m">READY</span></h1>
-  <p id="calStatus">Fit into the outline — hands out like a keeper 🧤</p>
+  <p id="calStatus" data-i="calibP"></p>
   <div style="width:280px;height:14px;border:2px solid var(--cyan);border-radius:8px;overflow:hidden">
     <div id="calFill" style="height:100%;width:0%;background:var(--lime)"></div>
   </div>
@@ -143,7 +151,7 @@
     <button id="tglCam" class="alt">📷 CAM: SHOWN</button>
     <button id="tglMic" class="alt">🎤 MIC: ON</button>
   </div>
-  <button id="btnVsCancel" class="alt">CANCEL</button>
+  <button id="btnVsCancel" class="alt" data-i="cancel"></button>
 </div>
 
 <div class="overlay hidden" id="endOv">
@@ -160,6 +168,23 @@ import { FilesetResolver, PoseLandmarker } from
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 const $=id=>document.getElementById(id);
+
+/* ---------------- i18n ---------------- */
+const I18N={"en": {"moreGames": "🎮 MORE GAMES", "top20": "🌍 WORLD TOP 20", "namePh": "YOUR NAME", "camNote": "Solo: camera stays on device. Multiplayer: you choose what to share.", "cancel": "CANCEL", "searching": "SEARCHING FOR OPPONENT…", "unresp": "OPPONENT UNRESPONSIVE — SEARCHING AGAIN…", "wonT": "YOU WON", "lostT": "YOU LOST", "drawT": "DRAW", "rematch": "🔁 REMATCH", "waitingFor": "⏳ WAITING FOR {n}…", "loadModel": "Loading the game engine… ⚙️", "reqCam": "A window will pop up — tap ALLOW to use your camera 📷", "camFail": "Camera failed ({e}). Allow camera access and try again.", "calStepBack": "Step back — I need to see your chest", "calBoth": "👐 Show BOTH hands — match the outline!", "calHands": "👐 Hands up — I can’t see them", "calHold": "Perfect — hold still…", "autoStart": "auto-start in {s}s", "camShown": "📷 CAM: SHOWN", "camHidden": "📷 CAM: HIDDEN", "micOn": "🎤 MIC: ON", "micOff": "🎤 MIC: OFF", "shareClip": "🎬 CLIP READY — SAVE / SHARE", "faceQ": "FACE FILTER?", "noFilter": "NO FILTER", "intro": "YOU are the goalkeeper. Shots fly at your goal — get your hands on them. Stand ~1.5 m back, chest and both hands visible.", "solo": "🧤 SOLO — DEFEND THE GOAL", "mp": "⚔️ MULTIPLAYER — SAME SHOTS, MOST SAVES WINS", "calibP": "Fit into the outline — hands out like a keeper 🧤"}, "fr": {"moreGames": "🎮 PLUS DE JEUX", "top20": "🌍 TOP 20 MONDIAL", "namePh": "TON NOM", "camNote": "Solo : la caméra reste sur l’appareil. Multijoueur : tu choisis ce que tu partages.", "cancel": "ANNULER", "searching": "RECHERCHE D’UN ADVERSAIRE…", "unresp": "ADVERSAIRE INACTIF — NOUVELLE RECHERCHE…", "wonT": "TU AS GAGNÉ", "lostT": "TU AS PERDU", "drawT": "ÉGALITÉ", "rematch": "🔁 REVANCHE", "waitingFor": "⏳ EN ATTENTE DE {n}…", "loadModel": "Chargement du moteur de jeu… ⚙️", "reqCam": "Une fenêtre va s’afficher — appuie sur AUTORISER pour la caméra 📷", "camFail": "Caméra impossible ({e}). Autorise la caméra puis réessaie.", "calStepBack": "Recule — je dois voir ton torse", "calBoth": "👐 Montre TES DEUX MAINS — comme la silhouette !", "calHands": "👐 Mains levées — je ne les vois pas", "calHold": "Parfait — ne bouge plus…", "autoStart": "départ auto dans {s}s", "camShown": "📷 CAM : VISIBLE", "camHidden": "📷 CAM : MASQUÉE", "micOn": "🎤 MICRO : OUI", "micOff": "🎤 MICRO : NON", "shareClip": "🎬 CLIP PRÊT — ENREGISTRER / PARTAGER", "faceQ": "FILTRE VISAGE ?", "noFilter": "SANS FILTRE", "intro": "TU es le gardien. Les tirs arrivent — mets tes mains dessus. ~1,5 m de recul, torse et mains visibles.", "solo": "🧤 SOLO — DÉFENDS LE BUT", "mp": "⚔️ MULTIJOUEUR — MÊMES TIRS, LE PLUS D’ARRÊTS GAGNE", "calibP": "Place-toi dans la silhouette — mains écartées comme un gardien 🧤"}, "ar": {"moreGames": "🎮 ألعاب أخرى", "top20": "🌍 أفضل ٢٠ عالميًا", "namePh": "اسمك", "camNote": "فردي: الكاميرا تبقى على جهازك. جماعي: أنت تختار ما تشاركه.", "cancel": "إلغاء", "searching": "جارٍ البحث عن خصم…", "unresp": "الخصم لا يستجيب — بحث من جديد…", "wonT": "لقد فزت", "lostT": "لقد خسرت", "drawT": "تعادل", "rematch": "🔁 إعادة المباراة", "waitingFor": "⏳ بانتظار {n}…", "loadModel": "جارٍ تحميل محرك اللعبة… ⚙️", "reqCam": "ستظهر نافذة — اضغط سماح لتفعيل الكاميرا 📷", "camFail": "تعذّرت الكاميرا ({e}). اسمح بالوصول ثم أعد المحاولة.", "calStepBack": "ابتعد قليلًا — أريد رؤية صدرك", "calBoth": "👐 أظهر كلتا يديك — مثل الشكل!", "calHands": "👐 ارفع يديك — لا أراهما", "calHold": "ممتاز — اثبت مكانك…", "autoStart": "بدء تلقائي خلال {s} ث", "camShown": "📷 الكاميرا: ظاهرة", "camHidden": "📷 الكاميرا: مخفية", "micOn": "🎤 المايك: يعمل", "micOff": "🎤 المايك: مغلق", "shareClip": "🎬 المقطع جاهز — حفظ / مشاركة", "faceQ": "فلتر الوجه؟", "noFilter": "بدون فلتر", "intro": "أنت حارس المرمى. التسديدات قادمة — أوقفها بيديك. قف على بعد ~1.5 م.", "solo": "🧤 فردي — احمِ المرمى", "mp": "⚔️ جماعي — نفس التسديدات، الأكثر تصديًا يفوز", "calibP": "طابق الشكل — يداك مفتوحتان كحارس 🧤"}, "es": {"moreGames": "🎮 MÁS JUEGOS", "top20": "🌍 TOP 20 MUNDIAL", "namePh": "TU NOMBRE", "camNote": "Solo: la cámara se queda en tu dispositivo. Multijugador: tú eliges qué compartir.", "cancel": "CANCELAR", "searching": "BUSCANDO RIVAL…", "unresp": "RIVAL SIN RESPUESTA — BUSCANDO DE NUEVO…", "wonT": "¡GANASTE!", "lostT": "PERDISTE", "drawT": "EMPATE", "rematch": "🔁 REVANCHA", "waitingFor": "⏳ ESPERANDO A {n}…", "loadModel": "Cargando el motor del juego… ⚙️", "reqCam": "Aparecerá una ventana — pulsa PERMITIR para usar la cámara 📷", "camFail": "Fallo de cámara ({e}). Permite el acceso y reinténtalo.", "calStepBack": "Aléjate — necesito ver tu pecho", "calBoth": "👐 Muestra AMBAS manos — ¡como la silueta!", "calHands": "👐 Manos arriba — no las veo", "calHold": "Perfecto — quieto…", "autoStart": "inicio automático en {s}s", "camShown": "📷 CÁMARA: VISIBLE", "camHidden": "📷 CÁMARA: OCULTA", "micOn": "🎤 MICRO: SÍ", "micOff": "🎤 MICRO: NO", "shareClip": "🎬 CLIP LISTO — GUARDAR / COMPARTIR", "faceQ": "¿FILTRO DE CARA?", "noFilter": "SIN FILTRO", "intro": "TÚ eres el portero. Los tiros llegan — ponles las manos. ~1,5 m atrás, pecho y manos visibles.", "solo": "🧤 SOLO — DEFIENDE LA PORTERÍA", "mp": "⚔️ MULTIJUGADOR — MISMOS TIROS, MÁS PARADAS GANA", "calibP": "Encaja en la silueta — manos abiertas como un portero 🧤"}};
+let LANG='en';
+try{LANG=localStorage.getItem('kp_lang')||localStorage.getItem('ts_lang')||({fr:'fr',ar:'ar',es:'es'}[(navigator.language||'en').slice(0,2)]||'en')}catch(e){}
+if(!I18N[LANG])LANG='en';
+const T=k=>(I18N[LANG][k]!=null?I18N[LANG][k]:(I18N.en[k]!=null?I18N.en[k]:k));
+function applyLang(){
+  try{localStorage.setItem('kp_lang',LANG)}catch(e){}
+  document.documentElement.lang=LANG;
+  document.querySelectorAll('[data-i]').forEach(el=>el.textContent=T(el.dataset.i));
+  document.querySelectorAll('#langRow button').forEach(b=>b.classList.toggle('on',b.dataset.l===LANG));
+  const pn=document.getElementById('playerName');if(pn)pn.placeholder=T('namePh');
+  if(typeof privLabels==='function')try{privLabels()}catch(e){}
+}
+document.querySelectorAll('#langRow button').forEach(b=>b.onclick=e=>{LANG=b.dataset.l;applyLang();e.stopPropagation()});
+
 const GAME='CARDIOKEEPER',LBTABLE='cardio_scores_keeper',LOBBY='cardio-keeper-lobby',ROOMP='cardio-keeper-';
 const cnv=$('pitch'),ctx=cnv.getContext('2d');
 let W=innerWidth,H=innerHeight;
@@ -223,14 +248,14 @@ $('btnSnd').onclick=e=>{
 let landmarker=null,video=$('cam'),skel=$('skel'),sctx=skel.getContext('2d'),micTrack=null;
 async function initCamera(){
   $('bootSpin').classList.remove('hidden');
-  $('startStatus').textContent='Loading the game engine… ⚙️';
+  $('startStatus').textContent=T('loadModel');
   const files=await FilesetResolver.forVisionTasks(
     'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
   const lmk=await PoseLandmarker.createFromOptions(files,{
     baseOptions:{modelAssetPath:
       'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
       delegate:'GPU'},runningMode:'VIDEO',numPoses:1});
-  $('startStatus').textContent='A window will pop up — tap ALLOW to use your camera 📷';
+  $('startStatus').textContent=T('reqCam');
   const stream=await navigator.mediaDevices.getUserMedia({video:{width:480,height:360},audio:true});
   micTrack=stream.getAudioTracks()[0]||null;
   video.srcObject=stream;
@@ -274,7 +299,7 @@ function poseLoop(){
   if(cal.active&&!cal.done){
     drawStanceGuide();
     const elapsed=(now-cal.started)/1000;
-    $('calSkip').textContent='auto-start in '+Math.max(0,Math.ceil(10-elapsed))+'s';
+    $('calSkip').textContent=T('autoStart').replace('{s}',Math.max(0,Math.ceil(10-elapsed)));
     if(elapsed>=10){
       if(cal.seen)calDone();
       else calAbort('Could not see you — check camera and lighting, then try again.');
@@ -291,14 +316,14 @@ function poseLoop(){
       if(ok)cal.seen=true;
       if(!ok){cal.samples=0;$('camwrap').classList.remove('good');
         $('calStatus').textContent=
-          !shOk?'Step back — I need to see your chest'
-          :(handL!==handR)?'👐 Show BOTH hands — match the outline!'
+          !shOk?T('calStepBack')
+          :(handL!==handR)?T('calBoth')
           :'👐 Hands up — I can\u2019t see them';
         $('calFill').style.width='0%';
       }else{
         $('camwrap').classList.add('good');
         cal.samples++;
-        $('calStatus').textContent='Perfect — hold still…';
+        $('calStatus').textContent=T('calHold');
         $('calFill').style.width=Math.min(100,cal.samples*4.2)+'%';
         if(cal.samples>=24)calDone();
       }
@@ -402,12 +427,12 @@ function maybeSettle(){
   if(VS.myFin==null||VS.oppFin==null)return;
   const my=VS.myFin,op=VS.oppFin;
   const draw=my===op,win=my>op;
-  $('endTitle').innerHTML=draw?'<span class="c">DRAW</span> 🤝'
-    :win?'<span style="color:var(--lime)">YOU WON</span> 🏆':'<span class="m">YOU LOST</span> 💀';
+  $('endTitle').innerHTML=draw?'<span class="c">'+T('drawT')+'</span> 🤝'
+    :win?'<span style="color:var(--lime)">'+T('wonT')+'</span> 🏆':'<span class="m">'+T('lostT')+'</span> 💀';
   $('endStats').innerHTML='You <b style="color:var(--lime)">'+my+'</b> saves · '+esc(VS.oppName)
     +' <b style="color:var(--magenta)">'+op+'</b>';
   win?SFX.win():SFX.over();
-  $('btnRematch').disabled=false;$('btnRematch').textContent='🔁 REMATCH';
+  $('btnRematch').disabled=false;$('btnRematch').textContent=T('rematch');
   $('btnRematch').classList.remove('hidden');
   setTimeout(()=>$('endOv').classList.remove('hidden'),600);
 }
@@ -554,9 +579,9 @@ const FILTERS=['🚫','😎','🤖','👽','🐸'];
 let filterCb=null;
 function askFilter(cb){
   filterCb=cb;
-  $('filterRow').innerHTML='<div style="font-family:Bungee,cursive;font-size:13px;align-self:center;color:var(--cyan);padding:0 4px">FACE FILTER?</div>'
+  $('filterRow').innerHTML='<div style="font-family:Bungee,cursive;font-size:13px;align-self:center;color:var(--cyan);padding:0 4px">'+T('faceQ')+'</div>'
     +FILTERS.map(f=>'<button data-f="'+f+'"'+((f==='🚫'?!rec.filter:rec.filter===f)?' class="sel"':'')
-    +(f==='🚫'?' style="font-family:Bungee,cursive;font-size:12px">NO FILTER':'>'+f)+'</button>').join('');
+    +(f==='🚫'?' style="font-family:Bungee,cursive;font-size:12px">'+T('noFilter'):'>'+f)+'</button>').join('');
   $('filterRow').classList.remove('hidden');
 }
 $('filterRow').onclick=e=>{
@@ -699,8 +724,8 @@ const VS={on:false,chan:null,lobby:null,me:'',oppKey:'',oppName:'RIVAL',host:fal
 try{VS.shareCam=localStorage.getItem('kp_shcam')!=='0';
     VS.shareMic=localStorage.getItem('kp_shmic')!=='0'}catch(e){}
 function privLabels(){
-  $('tglCam').textContent=VS.shareCam?'📷 CAM: SHOWN':'📷 CAM: HIDDEN';
-  $('tglMic').textContent=VS.shareMic?'🎤 MIC: ON':'🎤 MIC: OFF';
+  $('tglCam').textContent=T(VS.shareCam?'camShown':'camHidden');
+  $('tglMic').textContent=T(VS.shareMic?'micOn':'micOff');
 }
 privLabels();
 $('tglCam').onclick=()=>{VS.shareCam=!VS.shareCam;
@@ -714,7 +739,7 @@ $('tglMic').onclick=()=>{VS.shareMic=!VS.shareMic;
   if(VS.aSend)VS.aSend.replaceTrack(VS.shareMic?(micTrack||null):null).catch(()=>{})};
 function vsEnterLobby(){
   if(VS.lobby){sbc.removeChannel(VS.lobby);VS.lobby=null}
-  $('vsStatus').textContent='SEARCHING FOR OPPONENT…';
+  $('vsStatus').textContent=T('searching');
   $('vsSpin').classList.remove('hidden');
   $('vsOv').classList.remove('hidden');
   VS.me=String(Date.now())+'-'+Math.floor(Math.random()*1e6);
@@ -775,7 +800,7 @@ function vsJoinRoom(roomId,oppName,isHost){
       if(VS.chan){sbc.removeChannel(VS.chan);VS.chan=null}
       vsStopRtc();
       VS.badKeys.add(VS.oppKey);
-      $('vsStatus').textContent='OPPONENT UNRESPONSIVE — SEARCHING AGAIN…';
+      $('vsStatus').textContent=T('unresp');
       vsEnterLobby();
     }
   },10000);
@@ -785,7 +810,7 @@ function vsStartMatch(){
   VS.matchN++;
   seedRng(hashStr(VS.roomId+':'+VS.matchN));
   $('vsOv').classList.add('hidden');$('endOv').classList.add('hidden');
-  $('btnRematch').disabled=false;$('btnRematch').textContent='🔁 REMATCH';
+  $('btnRematch').disabled=false;$('btnRematch').textContent=T('rematch');
   $('vsBar').textContent='🧤 '+VS.oppName+' 0 saves';
   $('vsBar').classList.remove('hidden');
   startGame('pvp');
@@ -878,7 +903,7 @@ function vsCleanup(){
 $('btnVsCancel').onclick=()=>{vsCleanup();$('startOv').classList.remove('hidden')};
 $('btnRematch').onclick=()=>{
   VS.remMe=true;
-  $('btnRematch').disabled=true;$('btnRematch').textContent='⏳ WAITING FOR '+VS.oppName+'…';
+  $('btnRematch').disabled=true;$('btnRematch').textContent=T('waitingFor').replace('{n}',VS.oppName);
   try{VS.chan&&VS.chan.send({type:'broadcast',event:'rem',payload:{from:VS.me}})}catch(e){}
   if(VS.remOpp)vsStartMatch();
 };
@@ -911,12 +936,13 @@ async function beginCalibrated(cb){
     $('calOv').classList.remove('hidden');
   }catch(e){
     $('bootSpin').classList.add('hidden');
-    $('startStatus').textContent='Camera failed ('+e.message+'). Allow camera access and try again.';
+    $('startStatus').textContent=T('camFail').replace('{e}',e.message);
   }
 }
 $('btnStart').onclick=()=>beginCalibrated(()=>startGame('solo'));
 $('btnVs').onclick=()=>beginCalibrated(()=>{VS.on=true;vsEnterLobby()});
 $('btnAgain').onclick=()=>{vsCleanup();startGame('solo')};
+applyLang();
 lastF=performance.now();requestAnimationFrame(loop);
 if(location.search.includes('demo')){$('startOv').classList.add('hidden');startGame('solo')}
 if(location.search.includes('vstest'))window.kpTest={go:()=>{grabName();VS.on=true;$('startOv').classList.add('hidden');vsEnterLobby()},VS,G};
