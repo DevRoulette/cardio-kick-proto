@@ -74,6 +74,9 @@
   #langRow button{font-family:'Bungee',cursive;font-size:12px;padding:7px 11px;border:1px solid #2a3357;
     border-radius:9px;background:var(--tunnel);color:var(--paper);cursor:pointer;box-shadow:none}
   #langRow button.on{border-color:var(--lime);color:var(--lime)}
+  #privBox{display:flex;flex-direction:column;align-items:center;gap:10px}
+  #privCode{font-family:'Bungee',cursive;font-size:30px;color:var(--lime);letter-spacing:5px}
+  #btnChallenge.accept{background:var(--lime);box-shadow:0 6px 0 #7da317;color:var(--ink)}
   .gnav{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
   .gnav a{font-family:'Bungee',cursive;font-size:13px;color:var(--paper);text-decoration:none;
     background:var(--tunnel);border:1px solid #2a3357;border-radius:11px;padding:10px 14px}
@@ -126,6 +129,7 @@
   <input id="playerName" maxlength="12" autocomplete="off">
   <button id="btnStart" data-i="solo"></button>
   <button id="btnVs" class="alt" data-i="mp"></button>
+  <button id="btnChallenge" class="alt" data-i="challenge"></button>
   <div style="display:flex;align-items:center;gap:10px"><div id="bootSpin" class="hidden"></div>
     <div class="status" id="startStatus"></div></div>
   <div style="font-size:13px;color:#6f7aa6" data-i="camNote"></div>
@@ -150,6 +154,14 @@
   <div id="vsPriv">
     <button id="tglCam" class="alt">📷 CAM: SHOWN</button>
     <button id="tglMic" class="alt">🎤 MIC: ON</button>
+  </div>
+  <div id="privBox" class="hidden">
+    <div style="font-family:'Bungee',cursive;font-size:13px;color:#8892b8" data-i="roomCode"></div>
+    <div id="privCode"></div>
+    <div style="display:flex;gap:8px">
+      <button id="btnInvite" class="alt" style="font-size:14px;padding:11px 16px" data-i="sendInvite"></button>
+      <button id="btnCopy" class="alt" style="font-size:14px;padding:11px 16px" data-i="copyLink"></button>
+    </div>
   </div>
   <button id="btnVsCancel" class="alt" data-i="cancel"></button>
 </div>
@@ -184,6 +196,10 @@ function applyLang(){
   if(typeof privLabels==='function')try{privLabels()}catch(e){}
 }
 document.querySelectorAll('#langRow button').forEach(b=>b.onclick=e=>{LANG=b.dataset.l;applyLang();e.stopPropagation()});
+Object.assign(I18N.en,{"challenge": "📲 CHALLENGE A FRIEND", "accept": "⚔️ ACCEPT CHALLENGE", "privWaitCode": "WAITING FOR YOUR FRIEND…", "privJoin": "JOINING YOUR FRIEND…", "roomCode": "ROOM CODE", "sendInvite": "📲 SEND INVITE", "copyLink": "📋 COPY LINK", "roomFull": "ROOM FULL — that match already started", "linkCopied": "LINK COPIED 📋", "challMsg": "{e} I challenge you on {g}! Tap to play me:"});
+Object.assign(I18N.fr,{"challenge": "📲 DÉFIER UN AMI", "accept": "⚔️ ACCEPTER LE DÉFI", "privWaitCode": "EN ATTENTE DE TON AMI…", "privJoin": "CONNEXION À TON AMI…", "roomCode": "CODE DU SALON", "sendInvite": "📲 ENVOYER L’INVITE", "copyLink": "📋 COPIER LE LIEN", "roomFull": "SALON PLEIN — ce match a déjà commencé", "linkCopied": "LIEN COPIÉ 📋", "challMsg": "{e} Je te défie sur {g} ! Touche pour m’affronter :"});
+Object.assign(I18N.ar,{"challenge": "📲 تحدَّ صديقًا", "accept": "⚔️ اقبل التحدي", "privWaitCode": "في انتظار صديقك…", "privJoin": "جارٍ الاتصال بصديقك…", "roomCode": "رمز الغرفة", "sendInvite": "📲 أرسل الدعوة", "copyLink": "📋 انسخ الرابط", "roomFull": "الغرفة ممتلئة — بدأت المباراة بالفعل", "linkCopied": "تم نسخ الرابط 📋", "challMsg": "{e} أتحداك على {g}! اضغط لتلعب ضدي:"});
+Object.assign(I18N.es,{"challenge": "📲 RETA A UN AMIGO", "accept": "⚔️ ACEPTAR EL RETO", "privWaitCode": "ESPERANDO A TU AMIGO…", "privJoin": "CONECTANDO CON TU AMIGO…", "roomCode": "CÓDIGO DE SALA", "sendInvite": "📲 ENVIAR INVITACIÓN", "copyLink": "📋 COPIAR ENLACE", "roomFull": "SALA LLENA — ese partido ya empezó", "linkCopied": "ENLACE COPIADO 📋", "challMsg": "{e} ¡Te reto en {g}! Toca para jugar contra mí:"});
 
 const GAME='CARDIOKEEPER',LBTABLE='cardio_scores_keeper',LOBBY='cardio-keeper-lobby',ROOMP='cardio-keeper-';
 const cnv=$('pitch'),ctx=cnv.getContext('2d');
@@ -718,7 +734,7 @@ $('btnLay').onclick=e=>{
 
 /* ---- multiplayer: identical shots, most saves wins ---- */
 const sbc=createClient('https://dpdrlmnofnhzktkbevug.supabase.co',SBK);
-const VS={on:false,chan:null,lobby:null,me:'',oppKey:'',oppName:'RIVAL',host:false,paired:false,
+const VS={on:false,priv:false,privCode:'',isCreator:false,pendRoom:null,chan:null,lobby:null,me:'',oppKey:'',oppName:'RIVAL',host:false,paired:false,
   int:null,roomTimer:null,shareCam:true,shareMic:true,vSend:null,aSend:null,rtcDead:false,
   badKeys:new Set(),remMe:false,remOpp:false,matchN:0,roomId:'',myFin:null,oppFin:null};
 try{VS.shareCam=localStorage.getItem('kp_shcam')!=='0';
@@ -763,7 +779,7 @@ function vsJoinRoom(roomId,oppName,isHost){
   if(VS.chan)return;
   VS.oppName=oppName;VS.host=isHost;VS.paired=false;VS.rtcDead=false;
   VS.roomId=roomId;VS.matchN=0;
-  $('vsStatus').textContent='FOUND '+oppName+'! CONNECTING…';
+  if(!VS.priv)$('vsStatus').textContent='FOUND '+oppName+'! CONNECTING…';
   VS.chan=sbc.channel(ROOMP+roomId,{config:{presence:{key:VS.me}}});
   VS.chan.on('broadcast',{event:'state'},({payload:p})=>{
     if(!p||p.from!==VS.oppKey)return;
@@ -786,16 +802,25 @@ function vsJoinRoom(roomId,oppName,isHost){
     $('startOv').classList.remove('hidden');
   });
   VS.chan.on('presence',{event:'sync'},()=>{
-    if(Object.keys(VS.chan.presenceState()).length>=2&&!VS.paired){
-      VS.paired=true;
-      if(VS.roomTimer){clearTimeout(VS.roomTimer);VS.roomTimer=null}
-      if(VS.lobby){sbc.removeChannel(VS.lobby);VS.lobby=null}
-      vsStartRtc();
-      vsStartMatch();
+    const st=VS.chan.presenceState();
+    const keys=Object.keys(st).sort();
+    if(keys.length<2||VS.paired)return;
+    if(VS.priv){ // private room: derive pairing from the room itself
+      const pair=keys.slice(0,2);
+      if(!pair.includes(VS.me)){$('vsStatus').textContent=T('roomFull');return}
+      VS.oppKey=pair[0]===VS.me?pair[1]:pair[0];VS.host=pair[0]===VS.me;
+      VS.pendRoom=null;try{history.replaceState(null,'',location.pathname)}catch(e){}
     }
+    VS.paired=true;
+    const meta=(st[VS.oppKey]&&st[VS.oppKey][0])||{};
+    VS.oppName=meta.name||VS.oppName||'RIVAL';VS.oppBelt=meta.belt||'';
+    if(VS.roomTimer){clearTimeout(VS.roomTimer);VS.roomTimer=null}
+    if(VS.lobby){sbc.removeChannel(VS.lobby);VS.lobby=null}
+    vsStartRtc();
+    vsStartMatch();
   });
   VS.chan.subscribe(s=>{if(s==='SUBSCRIBED')VS.chan.track({name:playerName})});
-  VS.roomTimer=setTimeout(()=>{
+  if(!VS.priv)VS.roomTimer=setTimeout(()=>{
     if(!VS.paired&&VS.on){
       if(VS.chan){sbc.removeChannel(VS.chan);VS.chan=null}
       vsStopRtc();
@@ -888,6 +913,33 @@ $('oppMute').onclick=()=>{
   $('oppMute').textContent=v.muted?'🔇':'🔊';
   v.play().catch(()=>{});
 };
+/* ---- private challenge rooms (share a link, play a specific friend) ---- */
+const CHAL_EMOJI='🧤',CHAL_GAME='CardioKeeper';
+function makeCode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let c='';for(let i=0;i<5;i++)c+=a[Math.floor(Math.random()*a.length)];return c}
+function challengeUrl(code){return location.origin+location.pathname+'?room='+code}
+function shareChallenge(code){
+  const url=challengeUrl(code);
+  const msg=T('challMsg').replace('{e}',CHAL_EMOJI).replace('{g}',CHAL_GAME);
+  try{
+    if(navigator.share){navigator.share({title:CHAL_GAME,text:msg,url}).catch(()=>{});}
+    else{window.open('https://wa.me/?text='+encodeURIComponent(msg+' '+url),'_blank')}
+  }catch(e){}
+}
+function copyChallenge(){
+  const url=challengeUrl(VS.privCode);
+  try{if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>banner(T('linkCopied'),'#c8ff3e')).catch(()=>{})}
+    else{shareChallenge(VS.privCode)}}catch(e){shareChallenge(VS.privCode)}
+}
+function vsJoinPrivate(code,isCreator){
+  VS.priv=true;VS.privCode=code;VS.isCreator=isCreator;
+  $('vsSpin').classList.remove('hidden');
+  $('vsOv').classList.remove('hidden');
+  $('vsStatus').textContent=isCreator?(T('privWaitCode')+' '+code):T('privJoin');
+  $('privBox').classList.toggle('hidden',!isCreator);
+  if(isCreator)$('privCode').textContent=code;
+  VS.me=String(Date.now())+'-'+Math.floor(Math.random()*1e6);
+  vsJoinRoom('priv-'+code,null,false);
+}
 function vsCleanup(){
   if(VS.int){clearInterval(VS.int);VS.int=null}
   if(VS.roomTimer){clearTimeout(VS.roomTimer);VS.roomTimer=null}
@@ -898,6 +950,10 @@ function vsCleanup(){
   vsStopRtc();
   $('vsBar').classList.add('hidden');
   $('vsOv').classList.add('hidden');
+  $('privBox').classList.add('hidden');
+  VS.priv=false;VS.privCode='';VS.isCreator=false;
+  {const bc=$('btnChallenge');if(bc){bc.dataset.i=VS.pendRoom?'accept':'challenge';bc.classList.toggle('accept',!!VS.pendRoom)}}
+  try{applyLang()}catch(e){}
   G.mode='solo';
 }
 $('btnVsCancel').onclick=()=>{vsCleanup();$('startOv').classList.remove('hidden')};
@@ -942,10 +998,19 @@ async function beginCalibrated(cb){
 $('btnStart').onclick=()=>beginCalibrated(()=>startGame('solo'));
 $('btnVs').onclick=()=>beginCalibrated(()=>{VS.on=true;vsEnterLobby()});
 $('btnAgain').onclick=()=>{vsCleanup();startGame('solo')};
+$('btnChallenge').onclick=()=>{
+  if(VS.pendRoom){beginCalibrated(()=>{VS.on=true;vsJoinPrivate(VS.pendRoom,false)})}
+  else{const code=makeCode();shareChallenge(code);beginCalibrated(()=>{VS.on=true;vsJoinPrivate(code,true)})}
+};
+$('btnInvite').onclick=()=>shareChallenge(VS.privCode);
+$('btnCopy').onclick=()=>copyChallenge();
+(()=>{const r=new URLSearchParams(location.search).get('room');
+  if(r&&/^[A-Z0-9]{4,8}$/.test(r)){VS.pendRoom=r;
+    const bc=$('btnChallenge');bc.dataset.i='accept';bc.classList.add('accept');}})();
 applyLang();
 lastF=performance.now();requestAnimationFrame(loop);
 if(location.search.includes('demo')){$('startOv').classList.add('hidden');startGame('solo')}
-if(location.search.includes('vstest'))window.kpTest={go:()=>{grabName();VS.on=true;$('startOv').classList.add('hidden');vsEnterLobby()},VS,G};
+if(location.search.includes('vstest'))window.kpTest={go:()=>{grabName();VS.on=true;$('startOv').classList.add('hidden');vsEnterLobby()},joinPriv:(c,isC)=>{grabName();VS.on=true;$('startOv').classList.add('hidden');vsJoinPrivate(c,!!isC)},VS,G};
 </script>
 </body>
 </html>
