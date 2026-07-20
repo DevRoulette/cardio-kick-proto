@@ -100,6 +100,7 @@
 <div class="btncol">
   <button id="btnSnd" class="mini alt">🔊 ON</button>
   <button id="btnRec" class="mini alt">⏺ CLIP</button>
+  <button id="btnQuit" class="mini alt hidden">✕ QUIT</button>
   <button id="btnLay" class="mini alt hidden">📷 CAM: BIG</button>
   <button id="btnCamShare" class="mini alt hidden">📷 ON</button>
   <button id="btnMicShare" class="mini alt hidden">🎤 ON</button>
@@ -321,6 +322,7 @@ function calAbort(msg){
   $('startStatus').textContent=msg;
 }
 function poseLoop(){
+  $('btnQuit').classList.toggle('hidden',!$('startOv').classList.contains('hidden')); // show QUIT only while a session is on-screen
   if(!landmarker||video.readyState<2){requestAnimationFrame(poseLoop);return}
   const now=performance.now();
   const res=landmarker.detectForVideo(video,now);
@@ -888,10 +890,12 @@ async function vsStartRtc(){
     ]});
     const st=video.srcObject;
     const vt=st&&st.getVideoTracks()[0];
-    VS.vSend=pc.addTransceiver('video',{direction:'sendrecv'}).sender;
-    if(vt&&VS.shareCam)VS.vSend.replaceTrack(vt).catch(()=>{});
-    VS.aSend=pc.addTransceiver('audio',{direction:'sendrecv'}).sender;
-    if(micTrack&&VS.shareMic)VS.aSend.replaceTrack(micTrack).catch(()=>{});
+    // iOS Safari fix: install the outbound track AT transceiver creation so the sender carries a live
+    // source before any SDP is built. The old fire-and-forget replaceTrack raced createAnswer, making
+    // iPhones answer recvonly (they'd receive our cam+mic but never send their own). Track-less
+    // fallback keeps receive-only working when a share toggle is off.
+    VS.vSend=((vt&&VS.shareCam)?pc.addTransceiver(vt,{direction:'sendrecv',streams:st?[st]:[]}):pc.addTransceiver('video',{direction:'sendrecv'})).sender;
+    VS.aSend=((micTrack&&VS.shareMic)?pc.addTransceiver(micTrack,{direction:'sendrecv',streams:st?[st]:[]}):pc.addTransceiver('audio',{direction:'sendrecv'})).sender;
     pc.ontrack=e=>{
       const v=$('oppVid');
       if(!v.srcObject)v.srcObject=(e.streams&&e.streams[0])||new MediaStream();
@@ -1052,6 +1056,9 @@ function vsCleanup(){
   G.mode='solo';
 }
 $('btnVsCancel').onclick=()=>{vsCleanup();$('startOv').classList.remove('hidden')};
+function quitToMenu(){G.running=false;vsCleanup();$('calOv').classList.add('hidden');$('endOv').classList.add('hidden');$('startOv').classList.remove('hidden');}
+$('btnQuit').onclick=()=>quitToMenu();
+
 $('btnRematch').onclick=()=>{
   if(VS.streamer){$('endOv').classList.add('hidden');$('vsOv').classList.remove('hidden');strViewerQueueUI();return}
   VS.remMe=true;
