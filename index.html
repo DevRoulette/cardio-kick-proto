@@ -747,7 +747,7 @@ $('btnLay').onclick=e=>{
 
 /* ---- multiplayer: identical shots, most saves wins ---- */
 const sbc=createClient('https://dpdrlmnofnhzktkbevug.supabase.co',SBK);
-const VS={on:false,streamer:false,strHost:false,strCode:'',lastOpp:null,strTimer:null,priv:false,privCode:'',isCreator:false,pendRoom:null,chan:null,lobby:null,me:'',oppKey:'',oppName:'RIVAL',host:false,paired:false,
+const VS={on:false,streamer:false,strHost:false,strCode:'',lastOpp:null,strTimer:null,strBusy:false,strN:0,priv:false,privCode:'',isCreator:false,pendRoom:null,chan:null,lobby:null,me:'',oppKey:'',oppName:'RIVAL',host:false,paired:false,
   int:null,roomTimer:null,shareCam:true,shareMic:true,vSend:null,aSend:null,rtcDead:false,
   badKeys:new Set(),remMe:false,remOpp:false,matchN:0,roomId:'',myFin:null,oppFin:null};
 VS.shareCam=true;VS.shareMic=true; // default ON every session — never silently stuck off
@@ -813,8 +813,8 @@ function vsJoinRoom(roomId,oppName,isHost){
   VS.chan.on('broadcast',{event:'rtc'},({payload:p})=>vsRtcMsg(p));
   VS.chan.on('broadcast',{event:'str-go'},({payload:p})=>{
     if(!p||!VS.streamer||VS.strHost)return;
-    if(p.opp===VS.me){VS.oppKey=p.host;VS.host=false;VS.paired=true;VS.seed=p.seed>>>0;VS.oppName=p.name||'STREAMER';
-      banner(T('strYourTurn'),'#c8ff3e');$('vsOv').classList.add('hidden');vsStartRtc();vsStartMatch();}
+    if(p.opp===VS.me&&!VS.paired&&!G.running){VS.oppKey=p.host;VS.host=false;VS.paired=true;VS.seed=p.seed>>>0;VS.oppName=p.name||'STREAMER';
+      banner(T('strYourTurn'),'#c8ff3e');$('vsOv').classList.add('hidden');vsStopRtc();vsStartRtc();vsStartMatch();}
     else{VS.lastOpp=p.opp;strViewerQueueUI()}
   });
   VS.chan.on('presence',{event:'leave'},({key})=>{
@@ -1007,29 +1007,30 @@ function vsJoinStreamer(code,asHost){
 }
 function strViewers(){const st=VS.chan?VS.chan.presenceState():{};const keys=Object.keys(st).sort();return {st,host:keys.find(k=>k.indexOf('0str-')===0),viewers:keys.filter(k=>k.indexOf('0str-')!==0)}}
 function strHostPickNext(){
-  if(!VS.strHost||VS.paired||G.running)return;
+  if(!VS.strHost||VS.paired||VS.strBusy||G.running)return;
   const {st,host,viewers}=strViewers();
-  const next=viewers.find(k=>k!==VS.lastOpp)||viewers[0];
+  const li=viewers.indexOf(VS.lastOpp);const next=viewers.length?viewers[(li+1)%viewers.length]:null;
   if(!next){$('strBox').classList.remove('hidden');$('vsStatus').textContent=T('strWaitViewers');return}
   VS.oppKey=next;VS.host=true;VS.paired=true;VS.lastOpp=next;
   VS.oppName=(st[next]&&st[next][0]&&st[next][0].name)||'VIEWER';
-  VS.seed=strHash('str|'+host+'|'+next);
+  VS.strN=(VS.strN||0)+1;VS.seed=strHash('str|'+host+'|'+next+'|'+VS.strN);
   $('strBox').classList.add('hidden');
   try{VS.chan.send({type:'broadcast',event:'str-go',payload:{opp:next,host,seed:VS.seed,name:playerName,from:VS.me}})}catch(e){}
-  vsStartRtc();vsStartMatch();
+  vsStopRtc();vsStartRtc();vsStartMatch();
 }
 function strViewerQueueUI(){
   const {st,host,viewers}=strViewers();
   if(!host){banner(T('strEnded'),'#ff3ea5');vsCleanup();$('startOv').classList.remove('hidden');return}
   const pos=viewers.indexOf(VS.me);const sn=(st[host]&&st[host][0]&&st[host][0].name)||'STREAMER';
-  if(!VS.paired&&!G.running)$('vsStatus').textContent=T('strQueuePos').replace('{k}',pos>=0?pos+1:'?').replace('{n}',sn);
+  if(!VS.paired&&!G.running)$('vsStatus').textContent=T('strQueuePos').replace('{k}',pos>=1?pos:1).replace('{n}',sn);
 }
 function strOnEnd(){
   if(!VS.streamer)return;
   $('btnRematch').classList.add('hidden');
   if(VS.strTimer)clearTimeout(VS.strTimer);
-  if(VS.strHost){VS.strTimer=setTimeout(()=>{VS.paired=false;$('endOv').classList.add('hidden');$('vsOv').classList.remove('hidden');strHostPickNext()},3400);}
-  else{VS.paired=false;VS.strTimer=setTimeout(()=>{$('endOv').classList.add('hidden');$('vsOv').classList.remove('hidden');$('strBox').classList.add('hidden');strViewerQueueUI()},3400);}
+  VS.strBusy=true;
+  if(VS.strHost){VS.strTimer=setTimeout(()=>{VS.strBusy=false;VS.paired=false;$('endOv').classList.add('hidden');$('vsOv').classList.remove('hidden');strHostPickNext()},3400);}
+  else{VS.paired=false;VS.strTimer=setTimeout(()=>{VS.strBusy=false;$('endOv').classList.add('hidden');$('vsOv').classList.remove('hidden');$('strBox').classList.add('hidden');strViewerQueueUI()},3400);}
 }
 function vsCleanup(){
   if(VS.int){clearInterval(VS.int);VS.int=null}
@@ -1044,7 +1045,7 @@ function vsCleanup(){
   $('btnCamShare').classList.add('hidden');$('btnMicShare').classList.add('hidden');
   $('privBox').classList.add('hidden');
   VS.priv=false;VS.privCode='';VS.isCreator=false;
-  VS.streamer=false;VS.strHost=false;VS.strCode='';VS.lastOpp=null;if(VS.strTimer){clearTimeout(VS.strTimer);VS.strTimer=null}
+  VS.streamer=false;VS.strHost=false;VS.strCode='';VS.lastOpp=null;VS.strBusy=false;VS.strN=0;if(VS.strTimer){clearTimeout(VS.strTimer);VS.strTimer=null}
   $('strBox').classList.add('hidden');
   {const bc=$('btnChallenge');if(bc){bc.dataset.i=VS.pendRoom?'accept':'challenge';bc.classList.toggle('accept',!!VS.pendRoom)}}
   try{applyLang()}catch(e){}
