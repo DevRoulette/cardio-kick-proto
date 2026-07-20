@@ -813,7 +813,7 @@ function vsJoinRoom(roomId,oppName,isHost){
   VS.chan.on('broadcast',{event:'rtc'},({payload:p})=>vsRtcMsg(p));
   VS.chan.on('broadcast',{event:'str-go'},({payload:p})=>{
     if(!p||!VS.streamer||VS.strHost)return;
-    if(p.opp===VS.me&&!VS.paired&&!G.running){VS.oppKey=p.host;VS.host=false;VS.paired=true;VS.seed=p.seed>>>0;VS.oppName=p.name||'STREAMER';
+    if(p.opp===VS.me&&!G.running){if(VS.strTimer){clearTimeout(VS.strTimer);VS.strTimer=null}VS.paired=false;VS.oppKey=null;VS.oppKey=p.host;VS.host=false;VS.paired=true;VS.seed=p.seed>>>0;VS.oppName=p.name||'STREAMER';
       banner(T('strYourTurn'),'#c8ff3e');$('vsOv').classList.add('hidden');vsStopRtc();vsStartRtc();vsStartMatch();}
     else{VS.lastOpp=p.opp;strViewerQueueUI()}
   });
@@ -1030,7 +1030,7 @@ function strOnEnd(){
   if(VS.strTimer)clearTimeout(VS.strTimer);
   VS.strBusy=true;
   if(VS.strHost){VS.strTimer=setTimeout(()=>{VS.strBusy=false;VS.paired=false;$('endOv').classList.add('hidden');$('vsOv').classList.remove('hidden');strHostPickNext()},3400);}
-  else{VS.paired=false;VS.strTimer=setTimeout(()=>{VS.strBusy=false;$('endOv').classList.add('hidden');$('vsOv').classList.remove('hidden');$('strBox').classList.add('hidden');strViewerQueueUI()},3400);}
+  else{VS.paired=false;VS.oppKey=null;VS.strTimer=setTimeout(()=>{VS.strBusy=false;$('endOv').classList.add('hidden');$('vsOv').classList.remove('hidden');$('strBox').classList.add('hidden');strViewerQueueUI()},3400);}
 }
 function vsCleanup(){
   if(VS.int){clearInterval(VS.int);VS.int=null}
